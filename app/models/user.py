@@ -1,6 +1,7 @@
 import uuid
 from sqlalchemy import Column, String, Boolean, DateTime
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.database import Base
 
@@ -14,3 +15,4 @@ class User(Base):
     role = Column(String(20), default="user")
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.now)
+    notes = relationship("Note", back_populates="owner", cascade="all, delete")
