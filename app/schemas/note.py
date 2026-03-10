@@ -2,11 +2,9 @@ from pydantic import BaseModel
 from uuid import UUID
 from datetime import datetime
 
-
 class NoteCreate(BaseModel):
     title: str
     content: str
-
 
 class NoteResponse(BaseModel):
     id: UUID

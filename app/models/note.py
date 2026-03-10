@@ -6,7 +6,6 @@ from sqlalchemy.sql import func
 
 from app.database import Base
 
-
 class Note(Base):
     __tablename__ = "notes"
 
