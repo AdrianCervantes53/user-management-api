@@ -1,21 +1,42 @@
 # Architecture
 
 ## Overview
-The portfolio uses a microservices architecture with a frontend built using React.js and a backend API built with Node.js/Express. The database is MongoDB, and Docker is used for containerization.
+API RESTful para gestión de usuarios y notas, construida con FastAPI (Python). Utiliza PostgreSQL como base de datos con SQLAlchemy como ORM y Alembic para migraciones. La autenticación se maneja con JWT.
 
-## Components
-- Frontend: React application with TypeScript
-- Backend: Express server with RESTful API
-- Database: MongoDB for data storage
-- Deployment: Docker containers for consistent environment
+## Stack
+- **Backend**: FastAPI (Python)
+- **Database**: PostgreSQL con SQLAlchemy
+- **Migrations**: Alembic
+- **Authentication**: JWT (OAuth2)
+- **Containerization**: Docker
+
+## Structure
+```
+app/
+├── main.py           # Entry point
+├── database.py       # DB configuration
+├── core/
+│   ├── config.py    # Settings
+│   ├── security.py  # Password hashing, JWT
+│   └── dependencies.py  # Auth dependencies
+├── models/          # SQLAlchemy models
+├── routers/         # API endpoints
+├── schemas/         # Pydantic schemas
+└── services/        # Business logic
+```
 
 ## Diagram
 ```
    [Client]
       |
       v
-[React Frontend] --(API Calls)--> [Node.js Backend]
+[FastAPI Backend]
       |
       v
-   [MongoDB]
+[PostgreSQL]
 ```
+
+## Security
+- Password hashing: bcrypt
+- Token: JWT with SECRET_KEY
+- OAuth2 Password flow
