@@ -16,6 +16,8 @@ TestingSessionLocal = sessionmaker(
 
 @pytest.fixture(scope="session", autouse=True)
 def setup_database():
+    if not settings.TEST_DATABASE_URL:
+        raise ValueError("TEST_DATABASE_URL no está configurada en .env")
     Base.metadata.create_all(bind=engine)
     yield
     Base.metadata.drop_all(bind=engine)
