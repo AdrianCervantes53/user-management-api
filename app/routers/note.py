@@ -46,10 +46,10 @@ def get_note(
         Note.id == note_id,
         Note.owner_id == current_user.id
     ).first()
-
+    
     if not note:
         raise HTTPException(status_code=404, detail="Note not found")
-
+    
     return note
 
 @router.delete("/{note_id}", status_code=status.HTTP_204_NO_CONTENT)
