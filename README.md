@@ -1,6 +1,6 @@
 # User Management API
 
-REST API de gestión de usuarios con autenticación JWT y sistema de notas, construida con **FastAPI** y **PostgreSQL**. Proyecto de portafolio en desarrollo activo.
+API multiusuario para gestión de notas seguras con control de acceso y compartición entre usuarios. Proyecto de portafolio enfocado en demostrar autenticación, autorización y modelado de datos relacional con **FastAPI** y **PostgreSQL**.
 
 ## Stack tecnológico
 
@@ -89,9 +89,10 @@ Una vez levantado el servidor, la documentación interactiva está disponible en
 | Método | Endpoint | Descripción | Auth requerida |
 |--------|----------|-------------|----------------|
 | POST | `/notes/` | Crear nota | Sí |
-| GET | `/notes/` | Listar mis notas | Sí |
+| GET | `/notes/` | Listar mis notas (con paginación y filtros) | Sí |
 | GET | `/notes/{note_id}` | Ver una nota específica | Sí |
-| DELETE | `/notes/{note_id}` | Eliminar una nota | Sí |
+| DELETE | `/notes/{note_id}` | Eliminar una nota (soft delete) | Sí |
+| POST | `/notes/{note_id}/share` | Compartir nota con otro usuario | Sí |
 
 ## Uso básico
 
@@ -115,6 +116,14 @@ curl http://localhost:8000/users/me \
   -H "Authorization: Bearer <tu_token>"
 ```
 
+**4. Compartir una nota:**
+```bash
+curl -X POST http://localhost:8000/notes/1/share \
+  -H "Authorization: Bearer <tu_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"user_id": 2, "role": "viewer"}'
+```
+
 ## Testing
 
 Los tests usan una base de datos PostgreSQL separada para no afectar los datos de desarrollo. Cada test corre en su propia transacción que se revierte al finalizar.
@@ -136,15 +145,25 @@ pytest tests/ -v
 
 ## Estado del proyecto
 
-Este proyecto está en desarrollo activo. Features planeadas:
+### Implementado
+- [x] Autenticación con JWT y hashing de contraseñas con bcrypt
+- [x] CRUD de notas por usuario autenticado
+- [x] Tests con `pytest` + `httpx` e isolation por transacción
 
-- [x] Tests con `pytest` y `httpx`
-- [ ] Sistema de roles (admin / user)
-- [ ] Refresh tokens
-- [ ] `PUT /notes/{note_id}` — editar notas
+### En desarrollo
+- [ ] Compartición de notas entre usuarios (`POST /notes/{id}/share`)
+- [ ] Control de acceso por rol (owner / editor / viewer)
+- [ ] Soft delete en notas (`deleted_at`)
+- [ ] Auditoría de registros (`created_at`, `updated_at`)
+- [ ] Paginación y filtros en listados
+- [ ] `PUT /notes/{note_id}` — editar nota
 - [ ] `PUT /users/me` — actualizar perfil
-- [ ] Paginación en listados
+
+### Roadmap
+- [ ] Rate limiting (con Redis)
+- [ ] Deploy en Railway/Render
 - [ ] CI/CD con GitHub Actions
+- [ ] Refresh tokens
 
 ## Estructura del proyecto
 
