@@ -13,6 +13,7 @@ REST API de gestión de usuarios con autenticación JWT y sistema de notas, cons
 - **Pydantic v2** para validación de datos
 - **Docker** + **Docker Compose** para containerización
 - **Swagger UI** para documentación interactiva
+- **pytest** + **httpx** para testing
 
 ## Requisitos previos
 
@@ -114,11 +115,30 @@ curl http://localhost:8000/users/me \
   -H "Authorization: Bearer <tu_token>"
 ```
 
+## Testing
+
+Los tests usan una base de datos PostgreSQL separada para no afectar los datos de desarrollo. Cada test corre en su propia transacción que se revierte al finalizar.
+
+**1. Crear la base de datos de pruebas en PostgreSQL:**
+```sql
+CREATE DATABASE users_db_test;
+```
+
+**2. Agregar la variable `TEST_DATABASE_URL` a tu `.env`:**
+```env
+TEST_DATABASE_URL=postgresql://usuario:password@localhost:5432/users_db_test
+```
+
+**3. Correr los tests:**
+```bash
+pytest tests/ -v
+```
+
 ## Estado del proyecto
 
 Este proyecto está en desarrollo activo. Features planeadas:
 
-- [ ] Tests con `pytest` y `httpx`
+- [x] Tests con `pytest` y `httpx`
 - [ ] Sistema de roles (admin / user)
 - [ ] Refresh tokens
 - [ ] `PUT /notes/{note_id}` — editar notas
@@ -139,6 +159,9 @@ Este proyecto está en desarrollo activo. Features planeadas:
 │   ├── models/              # Modelos SQLAlchemy
 │   ├── schemas/             # Schemas Pydantic
 │   └── routers/             # Endpoints por recurso
+├── tests/
+│   ├── conftest.py          # Fixtures y configuración de pytest
+│   └── ...                  # Archivos de test por recurso
 ├── alembic/                 # Migraciones de BD
 ├── Dockerfile
 ├── docker-compose.yml
