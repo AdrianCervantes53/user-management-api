@@ -2,11 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from uuid import UUID
 
-from app.database import get_db
-from app.models.note import Note
-from app.models.user import User
-from app.schemas.note import NoteCreate, NoteResponse
 from app.core.dependencies import get_current_user
+from app.database import get_db
+from app.models import User, Note
+from app.schemas import NoteCreate, NoteResponse
 
 router = APIRouter(prefix="/notes", tags=["Notes"])
 

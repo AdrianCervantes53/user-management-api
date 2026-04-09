@@ -4,9 +4,8 @@ from uuid import UUID
 
 from app.core.dependencies import get_current_user
 from app.database import get_db
-from app.models.note import Note, NoteShare
-from app.models.user import User
-from app.schemas.note_share import NoteShareCreate, NoteShareResponse
+from app.models import User, Note, NoteShare
+from app.schemas import NoteShareCreate, NoteShareResponse
 
 router = APIRouter(prefix="/notes", tags=["Note Shares"])
 
