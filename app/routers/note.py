@@ -59,7 +59,7 @@ def get_note(
     ).first()
     
     if not note:
-        raise HTTPException(status_code=404, detail="Note not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
     
     is_owner = note.owner_id == current_user.id
     is_shared = db.query(NoteShare).filter(
@@ -68,7 +68,7 @@ def get_note(
     ).first()
     
     if not is_owner or not is_shared:
-        raise HTTPException(status_code=404, detail="Note not found")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to access this note")
     
     return note
 
@@ -84,10 +84,10 @@ def delete_note(
     ).first()
 
     if not note:
-        raise HTTPException(status_code=404, detail="Note not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
     
     if note.owner_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Only the owner can delete this note")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the owner can delete this note")
 
     note.deleted_at = datetime.now(timezone.utc)
     db.commit()

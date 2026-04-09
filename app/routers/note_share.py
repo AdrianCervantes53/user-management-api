@@ -25,7 +25,7 @@ def share_note(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
     
     if note.owner_id != current_user.id:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Only the owner can share this note")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the owner can share this note")
     
     if payload.shared_with == current_user.id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot share note with yourself")

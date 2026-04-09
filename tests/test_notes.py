@@ -29,8 +29,8 @@ def test_note_access_control(client, auth_headers, another_user_token):
     # Usuario 2 intenta obtener nota de usuario 1 → debe fallar
     response = client.get(f"/notes/{note_id}", headers=another_user_token)
     
-    assert response.status_code == 404
-    assert response.json()["detail"] == "Note not found"
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Not allowed to access this note"
     
     """
     # Usuario 2 intenta actualizar nota de usuario 1 → debe fallar
@@ -46,6 +46,5 @@ def test_note_access_control(client, auth_headers, another_user_token):
     # Usuario 2 intenta eliminar nota de usuario 1 → debe fallar
     response = client.delete(f"/notes/{note_id}", headers=another_user_token)
     
-    assert response.status_code == 404
-    assert response.json()["detail"] == "Note not found"
-
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Only the owner can delete this note"
