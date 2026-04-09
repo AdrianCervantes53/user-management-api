@@ -9,7 +9,7 @@ from app.schemas import NoteShareCreate, NoteShareResponse
 
 router = APIRouter(prefix="/notes", tags=["Note Shares"])
 
-@router.post("/{note_id}/share", response_class=NoteShareResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/{note_id}/share", response_model=NoteShareResponse, status_code=status.HTTP_201_CREATED)
 def share_note(
     note_id: UUID,
     payload: NoteShareCreate,

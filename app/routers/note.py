@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from uuid import UUID
+from datetime import datetime, timezone
 
 from app.core.dependencies import get_current_user
 from app.database import get_db
-from app.models import User, Note
+from app.models import User, Note, NoteShare
 from app.schemas import NoteCreate, NoteResponse
 
 router = APIRouter(prefix="/notes", tags=["Notes"])
@@ -32,8 +33,19 @@ def get_my_notes(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    notes = db.query(Note).filter(Note.owner_id == current_user.id).all()
-    return notes
+    owned = db.query(Note).filter(
+        Note.owner_id == current_user.id,
+        Note.deleted_at.is_(None)
+    ).all()
+    
+    shared = db.query(Note).join(
+        NoteShare, NoteShare.note_id == Note.id
+    ).filter(
+        NoteShare.shared_with == current_user.id,
+        Note.deleted_at.is_(None)
+    ).all()
+    
+    return owned + shared
 
 @router.get("/{note_id}", response_model=NoteResponse)
 def get_note(
@@ -43,10 +55,19 @@ def get_note(
 ):
     note = db.query(Note).filter(
         Note.id == note_id,
-        Note.owner_id == current_user.id
+        Note.deleted_at.is_(None)
     ).first()
     
     if not note:
+        raise HTTPException(status_code=404, detail="Note not found")
+    
+    is_owner = note.owner_id == current_user.id
+    is_shared = db.query(NoteShare).filter(
+        NoteShare.note_id == note_id,
+        NoteShare.shared_with == current_user.id
+    ).first()
+    
+    if not is_owner or not is_shared:
         raise HTTPException(status_code=404, detail="Note not found")
     
     return note
@@ -59,11 +80,14 @@ def delete_note(
 ):
     note = db.query(Note).filter(
         Note.id == note_id,
-        Note.owner_id == current_user.id
+        Note.deleted_at.is_(None)
     ).first()
 
     if not note:
         raise HTTPException(status_code=404, detail="Note not found")
+    
+    if note.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Only the owner can delete this note")
 
-    db.delete(note)
+    note.deleted_at = datetime.now(timezone.utc)
     db.commit()
