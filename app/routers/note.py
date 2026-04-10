@@ -67,7 +67,7 @@ def get_note(
         NoteShare.shared_with == current_user.id
     ).first()
     
-    if not is_owner or not is_shared:
+    if not is_owner and not is_shared:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to access this note")
     
     return note

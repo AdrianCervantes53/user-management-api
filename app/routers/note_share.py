@@ -38,7 +38,7 @@ def share_note(
     
     existing_share = db.query(NoteShare).filter(
         NoteShare.note_id == note_id,
-        NoteShare.share_with == payload.shared_with
+        NoteShare.shared_with == payload.shared_with
     ).first()
     
     if existing_share:
