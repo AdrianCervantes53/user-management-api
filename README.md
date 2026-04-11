@@ -89,7 +89,7 @@ Una vez levantado el servidor, la documentación interactiva está disponible en
 | Método | Endpoint | Descripción | Auth requerida |
 |--------|----------|-------------|----------------|
 | POST | `/notes/` | Crear nota | Sí |
-| GET | `/notes/` | Listar mis notas (con paginación y filtros) | Sí |
+| GET | `/notes/` | Listar notas propias y compartidas (con paginación y filtros) | Sí |
 | GET | `/notes/{note_id}` | Ver una nota específica | Sí |
 | DELETE | `/notes/{note_id}` | Eliminar una nota (soft delete) | Sí |
 | POST | `/notes/{note_id}/share` | Compartir nota con otro usuario | Sí |
@@ -118,10 +118,10 @@ curl http://localhost:8000/users/me \
 
 **4. Compartir una nota:**
 ```bash
-curl -X POST http://localhost:8000/notes/1/share \
+curl -X POST http://localhost:8000/notes/<note_id>/share \
   -H "Authorization: Bearer <tu_token>" \
   -H "Content-Type: application/json" \
-  -d '{"user_id": 2, "role": "viewer"}'
+  -d '{"shared_with": "<user_id>", "role": "viewer"}'
 ```
 
 ## Testing
@@ -148,13 +148,13 @@ pytest tests/ -v
 ### Implementado
 - [x] Autenticación con JWT y hashing de contraseñas con bcrypt
 - [x] CRUD de notas por usuario autenticado
+- [x] Compartición de notas entre usuarios (`POST /notes/{id}/share`)
+- [x] Control de acceso por rol (owner / editor / viewer)
+- [x] Soft delete en notas (`deleted_at`)
+- [x] Auditoría de registros (`created_at`, `updated_at`)
 - [x] Tests con `pytest` + `httpx` e isolation por transacción
 
 ### En desarrollo
-- [ ] Compartición de notas entre usuarios (`POST /notes/{id}/share`)
-- [ ] Control de acceso por rol (owner / editor / viewer)
-- [ ] Soft delete en notas (`deleted_at`)
-- [ ] Auditoría de registros (`created_at`, `updated_at`)
 - [ ] Paginación y filtros en listados
 - [ ] `PUT /notes/{note_id}` — editar nota
 - [ ] `PUT /users/me` — actualizar perfil
