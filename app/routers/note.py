@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from uuid import UUID
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
+from typing import Optional
 
 from app.core.dependencies import get_current_user
 from app.database import get_db
@@ -30,22 +31,46 @@ def create_note(
 
 @router.get("/", response_model=list[NoteResponse])
 def get_my_notes(
+    search: Optional[str] = Query(None, description="Filtrar por título"),
+    role: Optional[str] = Query(None, pattern="^(owner|shared)$", description="owner | shared"),
+    from_date: Optional[date] = Query(None, description="Notas desde esta fecha (YYYY-MM-DD)"),
+    to_date: Optional[date] = Query(None, description="Notas hasta esta fecha (YYYY-MM-DD)"),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    owned = db.query(Note).filter(
-        Note.owner_id == current_user.id,
-        Note.deleted_at.is_(None)
-    ).all()
+    def apply_common_filters(query, model):
+        query = query.filter(model.deleted_at.is_(None))
+        if search:
+            query = query.filter(model.title.ilike(f"%{search}%"))
+        if from_date:
+            query = query.filter(model.created_at >= datetime.combine(from_date, datetime.min.time()))
+        if to_date:
+            query = query.filter(model.created_at <= datetime.combine(to_date, datetime.max.time()))
+        return query
     
-    shared = db.query(Note).join(
-        NoteShare, NoteShare.note_id == Note.id
-    ).filter(
-        NoteShare.shared_with == current_user.id,
-        Note.deleted_at.is_(None)
-    ).all()
-    
-    return owned + shared
+    if role == "owner":
+        query = db.query(Note).filter(Note.owner_id == current_user.id)
+        query = apply_common_filters(query, Note)
+        return query.order_by(Note.created_at.desc()).offset(skip).limit(limit).all()
+
+    if role == "shared":
+        query = db.query(Note).join(NoteShare, NoteShare.note_id == Note.id).filter(
+            NoteShare.shared_with == current_user.id
+        )
+        query = apply_common_filters(query, Note)
+        return query.order_by(Note.created_at.desc()).offset(skip).limit(limit).all()
+
+    # Sin filtro de rol: owned + shared sin duplicados
+    owned_ids = db.query(Note.id).filter(Note.owner_id == current_user.id)
+    shared_ids = db.query(Note.id).join(NoteShare, NoteShare.note_id == Note.id).filter(
+        NoteShare.shared_with == current_user.id
+    )
+
+    query = db.query(Note).filter(Note.id.in_(owned_ids.union(shared_ids)))
+    query = apply_common_filters(query, Note)
+    return query.order_by(Note.created_at.desc()).offset(skip).limit(limit).all()
 
 @router.get("/{note_id}", response_model=NoteResponse)
 def get_note(

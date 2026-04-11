@@ -98,3 +98,75 @@ def test_soft_delete_hides_from_list(client, auth_headers):
     response = client.get("/notes/", headers=auth_headers)
     ids = [n["id"] for n in response.json()]
     assert note_id not in ids
+    
+# --- GET /notes/ paginación y filtros ---
+
+def test_pagination(client, auth_headers):
+    for i in range(5):
+        client.post("/notes/", json={"title": f"Nota {i}", "content": "Contenido"}, headers=auth_headers)
+
+    response = client.get("/notes/?skip=0&limit=3", headers=auth_headers)
+    assert response.status_code == 200
+    assert len(response.json()) == 3
+
+    response = client.get("/notes/?skip=3&limit=3", headers=auth_headers)
+    assert response.status_code == 200
+    assert len(response.json()) == 2
+
+
+def test_filter_by_search(client, auth_headers):
+    client.post("/notes/", json={"title": "Nota de trabajo", "content": "Contenido"}, headers=auth_headers)
+    client.post("/notes/", json={"title": "Nota personal", "content": "Contenido"}, headers=auth_headers)
+
+    response = client.get("/notes/?search=trabajo", headers=auth_headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    assert "trabajo" in data[0]["title"].lower()
+
+
+def test_filter_by_role_owner(client, auth_headers, another_user_token):
+    # Usuario 1 crea nota y la comparte con usuario 2
+    response = client.post("/notes/", json={"title": "Nota propia", "content": "Contenido"}, headers=auth_headers)
+    note_id = response.json()["id"]
+    user2_id = client.get("/users/me", headers=another_user_token).json()["id"]
+    client.post(f"/notes/{note_id}/share", json={"shared_with": user2_id, "role": "viewer"}, headers=auth_headers)
+
+    # Usuario 2 filtra solo por owner → no debe ver la nota compartida
+    response = client.get("/notes/?role=owner", headers=another_user_token)
+    assert response.status_code == 200
+    ids = [n["id"] for n in response.json()]
+    assert note_id not in ids
+
+
+def test_filter_by_role_shared(client, auth_headers, another_user_token):
+    # Usuario 1 crea una nota propia y una compartida con usuario 2
+    client.post("/notes/", json={"title": "Nota propia u2", "content": "Contenido"}, headers=another_user_token)
+
+    response = client.post("/notes/", json={"title": "Nota compartida", "content": "Contenido"}, headers=auth_headers)
+    note_id = response.json()["id"]
+    user2_id = client.get("/users/me", headers=another_user_token).json()["id"]
+    client.post(f"/notes/{note_id}/share", json={"shared_with": user2_id, "role": "viewer"}, headers=auth_headers)
+
+    # Usuario 2 filtra solo por shared → solo ve la compartida, no la propia
+    response = client.get("/notes/?role=shared", headers=another_user_token)
+    assert response.status_code == 200
+    ids = [n["id"] for n in response.json()]
+    assert note_id in ids
+
+
+def test_filter_invalid_role(client, auth_headers):
+    response = client.get("/notes/?role=admin", headers=auth_headers)
+    assert response.status_code == 422
+
+
+def test_no_duplicate_notes(client, auth_headers, another_user_token):
+    # Verifica que una nota compartida no aparezca duplicada en el listado
+    response = client.post("/notes/", json={"title": "Sin duplicados", "content": "Contenido"}, headers=auth_headers)
+    note_id = response.json()["id"]
+    user2_id = client.get("/users/me", headers=another_user_token).json()["id"]
+    client.post(f"/notes/{note_id}/share", json={"shared_with": user2_id, "role": "viewer"}, headers=auth_headers)
+
+    response = client.get("/notes/", headers=auth_headers)
+    ids = [n["id"] for n in response.json()]
+    assert ids.count(note_id) == 1
