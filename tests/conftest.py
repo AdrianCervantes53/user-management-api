@@ -6,6 +6,7 @@ from sqlalchemy.orm import sessionmaker
 from app.main import app
 from app.database import Base
 from app.dependencies.db import get_db
+from app.models.user import User
 
 from app.core.config import settings
 
@@ -76,6 +77,26 @@ def another_user_token(client):
         "password": "12345678"
     }
     client.post("/users/", json=user_data)
+    response = client.post("/auth/login", data={
+        "username": user_data["email"],
+        "password": user_data["password"]
+    })
+    return {"Authorization": f"Bearer {response.json()['access_token']}"}
+
+@pytest.fixture
+def editor_user_token(client, db):
+    user_data = {
+        "username": "editoruser",
+        "email": "editor@email.com",
+        "password": "12345678"
+    }
+    client.post("/users/", json=user_data)
+
+    # Assign editor role directly in DB
+    user = db.query(User).filter(User.email == user_data["email"]).first()
+    user.role = "editor"
+    db.flush()
+
     response = client.post("/auth/login", data={
         "username": user_data["email"],
         "password": user_data["password"]
