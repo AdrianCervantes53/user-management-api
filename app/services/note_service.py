@@ -93,7 +93,11 @@ def update_note(db: Session, note_id: UUID, note_data: NoteUpdate, current_user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
 
     is_owner = note.owner_id == current_user.id
-    is_editor = current_user.role == "editor"
+    is_editor = db.query(NoteShare).filter(
+        NoteShare.note_id == note_id,
+        NoteShare.shared_with == current_user.id,
+        NoteShare.role == "editor"
+    ).first()
 
     if not is_owner and not is_editor:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to edit this note")
