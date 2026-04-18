@@ -47,12 +47,12 @@ def test_note_access_control(client, auth_headers, another_user_token):
     response = client.post("/notes/", json={"title": "Nota 1", "content": "Contenido"}, headers=auth_headers)
     note_id = response.json()["id"]
 
-    # Usuario 2 sin acceso → 404
+    # Usuario 2 sin acceso → 403
     response = client.get(f"/notes/{note_id}", headers=another_user_token)
     assert response.status_code == 403
     assert response.json()["detail"] == "Not allowed to access this note"
 
-    # Usuario 2 intenta eliminar → 404
+    # Usuario 2 intenta eliminar → 403
     response = client.delete(f"/notes/{note_id}", headers=another_user_token)
     assert response.status_code == 403
     assert response.json()["detail"] == "Only the owner can delete this note"
@@ -185,19 +185,31 @@ def test_owner_can_update_note(client, auth_headers):
     assert data["content"] == "Contenido actualizado"
 
 
-def test_editor_can_update_any_note(client, auth_headers, editor_user_token):
+def test_editor_can_update_note(client, auth_headers, editor_user_token):
+    # Owner crea la nota
     response = client.post("/notes/", json={"title": "Nota del owner", "content": "Contenido"}, headers=auth_headers)
     note_id = response.json()["id"]
 
+    # Owner comparte la nota con el editor user con rol 'editor'
+    editor_id = client.get("/users/me", headers=editor_user_token).json()["id"]
+    client.post(f"/notes/{note_id}/share", json={"shared_with": editor_id, "role": "editor"}, headers=auth_headers)
+
+    # El editor puede actualizar la nota
     response = client.put(f"/notes/{note_id}", json={"title": "Editada por editor"}, headers=editor_user_token)
     assert response.status_code == 200
     assert response.json()["title"] == "Editada por editor"
 
 
 def test_viewer_cannot_update_note(client, auth_headers, another_user_token):
+    # Owner crea la nota
     response = client.post("/notes/", json={"title": "Nota protegida", "content": "Contenido"}, headers=auth_headers)
     note_id = response.json()["id"]
 
+    # Owner comparte la nota con el otro usuario con rol 'viewer'
+    viewer_id = client.get("/users/me", headers=another_user_token).json()["id"]
+    client.post(f"/notes/{note_id}/share", json={"shared_with": viewer_id, "role": "viewer"}, headers=auth_headers)
+
+    # El viewer NO puede actualizar la nota
     response = client.put(f"/notes/{note_id}", json={"title": "Intento de edición"}, headers=another_user_token)
     assert response.status_code == 403
     assert response.json()["detail"] == "Not allowed to edit this note"
