@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from uuid import UUID
 
-from app.core.dependencies import get_current_user
-from app.database import get_db
+from app.dependencies.auth import get_current_user
+from app.dependencies.db import get_db
 from app.models import User, Note, NoteShare
 from app.schemas import NoteShareCreate, NoteShareResponse
 

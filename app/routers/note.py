@@ -4,8 +4,8 @@ from uuid import UUID
 from datetime import datetime, timezone, date
 from typing import Optional
 
-from app.core.dependencies import get_current_user
-from app.database import get_db
+from app.dependencies.auth import get_current_user
+from app.dependencies.db import get_db
 from app.models import User, Note, NoteShare
 from app.schemas import NoteCreate, NoteResponse
 

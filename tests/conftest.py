@@ -4,7 +4,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.main import app
-from app.database import Base, get_db
+from app.database import Base
+from app.dependencies.db import get_db
+
 from app.core.config import settings
 
 engine = create_engine(settings.TEST_DATABASE_URL)

@@ -1,12 +1,7 @@
 from datetime import datetime, timedelta, timezone
-from jose import JWTError, jwt
+from jose import jwt
 import bcrypt
-import os
 
-from fastapi import Depends, HTTPException
-from sqlalchemy.orm import Session
-from app.database import get_db
-from app.models import User
 from app.core.config import settings
 
 
