@@ -7,7 +7,7 @@ from typing import Optional
 from app.dependencies.auth import get_current_user
 from app.dependencies.db import get_db
 from app.models import User
-from app.schemas import NoteCreate, NoteResponse
+from app.schemas import NoteCreate, NoteUpdate, NoteResponse
 from app.services import note_service
 
 router = APIRouter(prefix="/notes", tags=["Notes"])
@@ -59,6 +59,21 @@ def get_note(
     current_user: User = Depends(get_current_user)
 ):
     return note_service.get_note_by_id(db, note_id, current_user)
+
+
+@router.put(
+    "/{note_id}",
+    response_model=NoteResponse,
+    summary="Update a note",
+    description="Updates the title and/or content of a note. Only the owner or a user with the 'editor' role can perform this action.",
+)
+def update_note(
+    note_id: UUID,
+    note_data: NoteUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    return note_service.update_note(db, note_id, note_data, current_user)
 
 
 @router.delete(
