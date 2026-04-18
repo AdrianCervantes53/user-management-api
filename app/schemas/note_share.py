@@ -7,6 +7,14 @@ class NoteShareCreate(BaseModel):
     shared_with: UUID
     role: Literal['editor', 'viewer']
     
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "shared_with": "123e4567-e89b-12d3-a456-426614174000",
+                "role": "viewer"
+            }
+        }
+    )
     
 class NoteShareResponse(BaseModel):
     id: UUID

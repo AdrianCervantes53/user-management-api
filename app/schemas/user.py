@@ -7,7 +7,16 @@ class UserCreate(BaseModel):
     username: str
     email: EmailStr
     password: str = Field(min_length=8, max_length=64)
-
+    
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "username": "johndoe",
+                "email": "john@example.com",
+                "password": "securepass123"
+            }
+        }
+    )
 
 class UserResponse(BaseModel):
     id: UUID

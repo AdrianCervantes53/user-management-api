@@ -5,6 +5,15 @@ from datetime import datetime
 class NoteCreate(BaseModel):
     title: str
     content: str
+    
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "title": "My first note",
+                "content": "This is the content of my note."
+            }
+        }
+    )
 
 class NoteResponse(BaseModel):
     id: UUID
