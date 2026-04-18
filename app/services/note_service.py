@@ -6,7 +6,7 @@ from fastapi import HTTPException, status
 
 from app.models import Note, NoteShare
 from app.models.user import User
-from app.schemas import NoteCreate
+from app.schemas import NoteCreate, NoteUpdate
 
 
 def create_note(db: Session, owner_id: UUID, note_data: NoteCreate) -> Note:
@@ -80,6 +80,32 @@ def get_note_by_id(db: Session, note_id: UUID, current_user: User) -> Note:
     if not is_owner and not is_shared:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to access this note")
 
+    return note
+
+
+def update_note(db: Session, note_id: UUID, note_data: NoteUpdate, current_user: User) -> Note:
+    note = db.query(Note).filter(
+        Note.id == note_id,
+        Note.deleted_at.is_(None)
+    ).first()
+
+    if not note:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
+
+    is_owner = note.owner_id == current_user.id
+    is_editor = current_user.role == "editor"
+
+    if not is_owner and not is_editor:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to edit this note")
+
+    if note_data.title is not None:
+        note.title = note_data.title
+    if note_data.content is not None:
+        note.content = note_data.content
+
+    note.updated_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(note)
     return note
 
 
