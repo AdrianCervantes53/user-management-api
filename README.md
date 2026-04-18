@@ -26,7 +26,9 @@ Most tutorial APIs stop at "create a user and return a token." This one goes fur
 
 ## Design decisions
 
-**Separation between `security.py` and `dependencies.py`.** Cryptographic operations (hashing, token creation, token decoding) live in `security.py` with no FastAPI dependencies. Orchestration logic — reading the token from the request, querying the database, raising HTTP errors — lives in `dependencies.py`. This makes the crypto layer independently testable and keeps concerns clearly separated.
+**Three-layer architecture: routers / services / dependencies.** Routers contain only endpoint definitions (2–4 lines each). Business logic and database operations live in `services/`. FastAPI dependency functions (`get_db`, `get_current_user`) live in `dependencies/`. This separation makes each layer independently testable and mirrors the structure used in larger codebases.
+
+**Separation between `security.py` and `dependencies/auth.py`.** Cryptographic operations (hashing, token creation, token decoding) live in `core/security.py` with no FastAPI dependencies. Orchestration logic — reading the token from the request, querying the database, raising HTTP errors — lives in `dependencies/auth.py`. This makes the crypto layer independently testable and keeps concerns clearly separated.
 
 **UUID primary keys.** Both `User` and `Note` models use UUIDs instead of sequential integers. This prevents ID enumeration attacks and avoids exposing record counts to clients.
 
@@ -39,6 +41,8 @@ Most tutorial APIs stop at "create a user and return a token." This one goes fur
 **Union query for owned + shared notes.** `GET /notes/` returns both notes the user owns and notes shared with them, without duplicates, using a SQLAlchemy `union()` query instead of two separate requests joined in Python. This keeps the logic in the database where it belongs.
 
 **Test isolation via transaction rollback.** Each test runs inside a database transaction that is rolled back at the end, leaving no state between tests. The test client uses `app.dependency_overrides[get_db]` to inject the test session, so tests exercise the actual application stack rather than mocks.
+
+**Development environment with hot reload.** A `docker-compose.override.yml` mounts the local codebase as a volume and enables Uvicorn's `--reload` flag. This file is applied automatically during development (`docker compose up`) and ignored in production (`docker compose -f docker-compose.yml up`).
 
 ---
 
@@ -157,12 +161,19 @@ Test coverage includes: auth flows (register, login, duplicates, wrong password)
 │   ├── main.py              # Application entry point and router registration
 │   ├── database.py          # SQLAlchemy engine and session factory
 │   ├── core/
-│   │   ├── config.py        # Environment variable loading
-│   │   ├── security.py      # JWT creation/decoding and password hashing
-│   │   └── dependencies.py  # FastAPI dependencies (get_db, get_current_user)
-│   ├── models/              # SQLAlchemy ORM models
-│   ├── schemas/             # Pydantic request/response schemas
-│   └── routers/             # Endpoint handlers grouped by resource
+│   │   ├── config.py        # Environment variable loading via Pydantic Settings
+│   │   └── security.py      # Pure crypto: JWT creation/decoding, password hashing
+│   ├── dependencies/
+│   │   ├── auth.py          # get_current_user (FastAPI dependency)
+│   │   └── db.py            # get_db (FastAPI dependency)
+│   ├── services/
+│   │   ├── auth_service.py       # Login logic
+│   │   ├── note_service.py       # Note CRUD and query logic
+│   │   ├── note_share_service.py # Note sharing logic
+│   │   └── user_service.py       # User CRUD logic
+│   ├── models/              # SQLAlchemy ORM models (User, Note, NoteShare)
+│   ├── schemas/             # Pydantic request/response schemas with examples
+│   └── routers/             # Endpoint definitions grouped by resource
 ├── tests/
 │   ├── conftest.py          # Fixtures: DB setup, test client, auth helpers
 │   ├── test_auth.py
@@ -171,6 +182,7 @@ Test coverage includes: auth flows (register, login, duplicates, wrong password)
 ├── alembic/                 # Migration scripts
 ├── Dockerfile
 ├── docker-compose.yml
+├── docker-compose.override.yml  # Dev overrides: volume mount + --reload
 └── requirements.txt
 ```
 
@@ -178,8 +190,8 @@ Test coverage includes: auth flows (register, login, duplicates, wrong password)
 
 ## Status and roadmap
 
-Implemented: JWT authentication, user registration, full note CRUD, soft delete, pagination and search filters, note sharing with viewer/editor roles, access control enforcement, and a full pytest test suite with transaction-level isolation.
+**Implemented:** JWT authentication, user registration, full note CRUD, soft delete, pagination and search filters, note sharing with viewer/editor roles, access control enforcement, full pytest test suite with transaction-level isolation, three-layer architecture (routers/services/dependencies), enriched OpenAPI docs with summaries and request examples, and hot-reload development environment via Docker volume.
 
-In progress: `PUT /notes/{note_id}` (edit note content), `PUT /users/me` (update profile).
+**In progress:** `PUT /notes/{note_id}` (edit note), `PUT /users/me` (update profile).
 
-Planned: rate limiting with Redis, CI/CD with GitHub Actions, deployment to Railway or Render, and refresh token support.
+**Planned:** rate limiting (slowapi), Redis caching, refresh token support, CI/CD with GitHub Actions, deployment to Railway or Render.
