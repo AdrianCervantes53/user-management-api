@@ -170,3 +170,64 @@ def test_no_duplicate_notes(client, auth_headers, another_user_token):
     response = client.get("/notes/", headers=auth_headers)
     ids = [n["id"] for n in response.json()]
     assert ids.count(note_id) == 1
+
+
+# --- PUT /notes/{note_id} ---
+
+def test_owner_can_update_note(client, auth_headers):
+    response = client.post("/notes/", json={"title": "Original", "content": "Contenido original"}, headers=auth_headers)
+    note_id = response.json()["id"]
+
+    response = client.put(f"/notes/{note_id}", json={"title": "Actualizado", "content": "Contenido actualizado"}, headers=auth_headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["title"] == "Actualizado"
+    assert data["content"] == "Contenido actualizado"
+
+
+def test_editor_can_update_any_note(client, auth_headers, editor_user_token):
+    response = client.post("/notes/", json={"title": "Nota del owner", "content": "Contenido"}, headers=auth_headers)
+    note_id = response.json()["id"]
+
+    response = client.put(f"/notes/{note_id}", json={"title": "Editada por editor"}, headers=editor_user_token)
+    assert response.status_code == 200
+    assert response.json()["title"] == "Editada por editor"
+
+
+def test_viewer_cannot_update_note(client, auth_headers, another_user_token):
+    response = client.post("/notes/", json={"title": "Nota protegida", "content": "Contenido"}, headers=auth_headers)
+    note_id = response.json()["id"]
+
+    response = client.put(f"/notes/{note_id}", json={"title": "Intento de edición"}, headers=another_user_token)
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Not allowed to edit this note"
+
+
+def test_partial_update_only_title(client, auth_headers):
+    response = client.post("/notes/", json={"title": "Título original", "content": "Contenido original"}, headers=auth_headers)
+    note = response.json()
+    note_id = note["id"]
+
+    response = client.put(f"/notes/{note_id}", json={"title": "Nuevo título"}, headers=auth_headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["title"] == "Nuevo título"
+    assert data["content"] == "Contenido original"
+
+
+def test_update_nonexistent_note(client, auth_headers):
+    fake_id = "00000000-0000-0000-0000-000000000000"
+    response = client.put(f"/notes/{fake_id}", json={"title": "No existe"}, headers=auth_headers)
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Note not found"
+
+
+def test_update_deleted_note(client, auth_headers):
+    response = client.post("/notes/", json={"title": "A borrar", "content": "Contenido"}, headers=auth_headers)
+    note_id = response.json()["id"]
+
+    client.delete(f"/notes/{note_id}", headers=auth_headers)
+
+    response = client.put(f"/notes/{note_id}", json={"title": "Editando borrada"}, headers=auth_headers)
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Note not found"
