@@ -22,7 +22,6 @@ class UserResponse(BaseModel):
     id: UUID
     username: str
     email: EmailStr
-    role: str
     is_active: bool
     created_at: datetime
 
