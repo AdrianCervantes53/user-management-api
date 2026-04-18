@@ -49,8 +49,3 @@ Thumbs.db
 # =========================
 *.sqlite3
 *.db
-
-# =========================
-# Docker overrides locales
-# =========================
-docker-compose.override.yml
