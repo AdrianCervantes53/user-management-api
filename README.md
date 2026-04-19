@@ -34,9 +34,9 @@ Most tutorial APIs stop at "create a user and return a token." This one goes fur
 
 **Soft delete via `deleted_at`.** Notes are never physically removed from the database. Instead, a `deleted_at` timestamp is set, and all queries filter on `Note.deleted_at.is_(None)`. This preserves the ability to audit deletions, recover records if needed, and avoid broken foreign key references in `NoteShare`.
 
-**Conflict handling at two layers.** The `NoteShare` model enforces a `UNIQUE(note_id, shared_with)` constraint at the database level, but the application also checks for duplicates before attempting the insert and returns a `409 Conflict` response explicitly. This prevents SQLAlchemy integrity errors from leaking into the response and gives the client a meaningful error before hitting the database.
+**Role is per-note, not per-user.** A user does not have a global role. Instead, roles are assigned through `NoteShare`: the same user can be an `editor` on one note and a `viewer` on another. The `role` field lives exclusively in the `note_shares` table and is enforced at the schema level via `Literal['viewer', 'editor']`, meaning invalid values are rejected before reaching any business logic or database layer.
 
-**Role expressed as a Pydantic `Literal`.** The `role` field in note sharing accepts only `'viewer'` or `'editor'`. This is enforced at the schema level via `Literal['viewer', 'editor']`, which means invalid values are rejected before they reach any business logic or database layer.
+**Conflict handling at two layers.** The `NoteShare` model enforces a `UNIQUE(note_id, shared_with)` constraint at the database level, but the application also checks for duplicates before attempting the insert and returns a `409 Conflict` response explicitly. This prevents SQLAlchemy integrity errors from leaking into the response and gives the client a meaningful error before hitting the database.
 
 **Union query for owned + shared notes.** `GET /notes/` returns both notes the user owns and notes shared with them, without duplicates, using a SQLAlchemy `union()` query instead of two separate requests joined in Python. This keeps the logic in the database where it belongs.
 
@@ -106,7 +106,8 @@ Interactive documentation is available at `http://localhost:8000/docs` once the 
 | POST | `/notes/` | Create a note | Yes |
 | GET | `/notes/` | List owned and shared notes (paginated, filterable) | Yes |
 | GET | `/notes/{note_id}` | Get a specific note | Yes |
-| DELETE | `/notes/{note_id}` | Soft-delete a note | Yes |
+| PUT | `/notes/{note_id}` | Update a note (owner or editor) | Yes |
+| DELETE | `/notes/{note_id}` | Soft-delete a note (owner only) | Yes |
 | POST | `/notes/{note_id}/share` | Share a note with another user | Yes |
 
 ### Quick example
@@ -126,11 +127,17 @@ curl -X POST http://localhost:8000/auth/login \
 curl http://localhost:8000/users/me \
   -H "Authorization: Bearer <token>"
 
-# Share a note
+# Create a note
+curl -X POST http://localhost:8000/notes/ \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"title": "My note", "content": "Hello world"}'
+
+# Share a note with editor access
 curl -X POST http://localhost:8000/notes/<note_id>/share \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
-  -d '{"shared_with": "<user_id>", "role": "viewer"}'
+  -d '{"shared_with": "<user_id>", "role": "editor"}'
 ```
 
 ---
@@ -150,7 +157,7 @@ TEST_DATABASE_URL=postgresql://user:password@localhost:5432/users_db_test
 pytest tests/ -v
 ```
 
-Test coverage includes: auth flows (register, login, duplicates, wrong password), note CRUD and isolation, access control enforcement (403 on unauthorized access), shared access by role, soft delete behavior, pagination and search filters, and note-share edge cases (duplicate shares, self-share, invalid role, deleted note).
+Test coverage includes: auth flows (register, login, duplicates, wrong password), note CRUD and isolation, access control enforcement (403 on unauthorized access), shared access by role, soft delete behavior, pagination and search filters, note update by owner and by editor via NoteShare, and note-share edge cases (duplicate shares, self-share, invalid role, deleted note).
 
 ---
 
@@ -180,6 +187,9 @@ Test coverage includes: auth flows (register, login, duplicates, wrong password)
 │   ├── test_notes.py
 │   └── test_note_share.py
 ├── alembic/                 # Migration scripts
+├── docs/
+│   ├── api.md               # Full API reference with request/response schemas
+│   └── architecture.md      # Architecture and design rationale
 ├── Dockerfile
 ├── docker-compose.yml
 ├── docker-compose.override.yml  # Dev overrides: volume mount + --reload
@@ -190,8 +200,8 @@ Test coverage includes: auth flows (register, login, duplicates, wrong password)
 
 ## Status and roadmap
 
-**Implemented:** JWT authentication, user registration, full note CRUD, soft delete, pagination and search filters, note sharing with viewer/editor roles, access control enforcement, full pytest test suite with transaction-level isolation, three-layer architecture (routers/services/dependencies), enriched OpenAPI docs with summaries and request examples, and hot-reload development environment via Docker volume.
+**Implemented:** JWT authentication, user registration, full note CRUD (including `PUT /notes/{note_id}`), soft delete, pagination and search filters, note sharing with viewer/editor roles (role scoped per note via `NoteShare`), access control enforcement, full pytest test suite with transaction-level isolation, three-layer architecture (routers/services/dependencies), enriched OpenAPI docs with summaries and request examples, and hot-reload development environment via Docker volume.
 
-**In progress:** `PUT /notes/{note_id}` (edit note), `PUT /users/me` (update profile).
+**In progress:** `PUT /users/me` (update profile).
 
 **Planned:** rate limiting (slowapi), Redis caching, refresh token support, CI/CD with GitHub Actions, deployment to Railway or Render.
