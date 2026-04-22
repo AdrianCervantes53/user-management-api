@@ -15,6 +15,15 @@ def test_register_duplicate_email(client, registered_user):
     })
     assert response.status_code == 409
     assert response.json()["detail"] == "Email already registered"
+    
+def test_register_duplicate_username(client, registered_user):
+    response = client.post("/users/", json={
+        "username": registered_user["username"],
+        "email": "another@email.com",
+        "password": "12345678"
+    })
+    assert response.status_code == 409
+    assert response.json()["detail"] == "Username already registered"
 
 def test_login_wrong_password(client, registered_user):
     # Intentar login con contraseña incorrecta
