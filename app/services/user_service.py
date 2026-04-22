@@ -7,10 +7,14 @@ from app.schemas import UserCreate
 
 
 def create_user(db: Session, user_data: UserCreate) -> User:
-    existing = db.query(User).filter(User.email == user_data.email).first()
-    if existing:
+    existing_email = db.query(User).filter(User.email == user_data.email).first()
+    if existing_email:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
-
+    
+    existing_username = db.query(User).filter(User.username == user_data.username).first()
+    if existing_username:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Username already registered")
+    
     db_user = User(
         username=user_data.username,
         email=user_data.email,
